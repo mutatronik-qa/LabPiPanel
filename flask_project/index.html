@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Control</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
+</head>
+<body>
+    <h1>Panel de Control</h1>
+
+    <h2>Control de Fuente XLN30052</h2>
+    <label>Set Voltage (V): </label>
+    <input type="number" id="voltage" step="0.1">
+    <button onclick="setVoltage()">Enviar</button>
+    <h3 id="current_voltage">Voltaje Actual: -- V</h3>
+    <button onclick="getVoltage()">Refrescar</button>
+
+    <h2>Lectura de DAQ USB-5203</h2>
+    <button onclick="getTemperature()">Leer Temperatura</button>
+    <h3 id="temperature">Temperatura: -- °C</h3>
+
+    <h2>Control de Relés</h2>
+    <label>Selecciona Relé:</label>
+    <select id="relay">
+        <option value="0">Relé 1</option>
+        <option value="1">Relé 2</option>
+        <option value="2">Relé 3</option>
+        <option value="3">Relé 4</option>
+    </select>
+    <button onclick="toggleRelay(true)">Encender</button>
+    <button onclick="toggleRelay(false)">Apagar</button>
+
+    <h3>Estado de Relés</h3>
+    <pre id="relay_status">---</pre>
+
+    <script>
+        const socket = io();
+
+        function setVoltage() {
+            let voltage = document.getElementById("voltage").value;
+            fetch("/set_voltage", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ voltage: voltage })
+            }).then(response => response.json())
+              .then(data => alert(data.message));
+        }
+
+        function getVoltage() {
+            fetch("/get_voltage")
+                .then(response => response.json())
+                .then(data => document.getElementById("current_voltage").innerText = "Voltaje Actual: " + data.voltage + "V");
+        }
+
+        function getTemperature() {
+            fetch("/get_temperature")
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById("temperature").innerText = data.error ? `Error: ${data.error}` : `Temperatura: ${data.temperature}°C`;
+                });
+        }
+
+        function toggleRelay(state) {
+            let relay = document.getElementById("relay").value;
+            socket.emit("toggle_relay", { relay: relay, state: state });
+        }
+
+        socket.on("relay_status", (data) => {
+            document.getElementById("relay_status").innerText = JSON.stringify(data, null, 2);
+        });
+
+        function requestRelayStatus() {
+            socket.emit("request_relay_status");
+        }
+
+        setInterval(requestRelayStatus, 5000);
+    </script>
+</body>
+</html>
