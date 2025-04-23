@@ -14,10 +14,11 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 # --- CONFIGURACIÓN DE RELÉS ---
 GPIO.setwarnings(False)  # 🔹 Solución para el warning de pines ya en uso
 GPIO.setmode(GPIO.BCM)
-RELAY_PINS = [17, 27, 22, 23]
-for pin in RELAY_PINS:
-    GPIO.setup(pin, GPIO.OUT)
-    GPIO.output(pin, GPIO.LOW)
+RELAY_PINS =[26, 20, 21, 16]
+
+for i in range(4):
+    GPIO.setup(Relay[i], GPIO.OUT)
+    GPIO.output(Relay[i], GPIO.HIGH)
 
 # --- CONFIGURACIÓN DE FUENTE XLN30052 (Telnet) ---
 HOST = "192.168.1.150"  # 🔹 Cambia a la IP de tu fuente

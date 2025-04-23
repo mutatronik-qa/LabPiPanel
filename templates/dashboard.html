@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LabPiPanel</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans">
+  <div class="max-w-5xl mx-auto p-6">
+    <h1 class="text-3xl font-bold mb-6">LabPiPanel: Panel de Control</h1>
+
+    <!-- Sección: Relés -->
+    <section class="mb-8">
+      <h2 class="text-xl font-semibold mb-2">Control de Relés</h2>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {% for relay in range(1, 5) %}
+        <button
+          class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
+          onclick="toggleRelay({{ relay }})"
+        >
+          Relé {{ relay }}
+        </button>
+        {% endfor %}
+      </div>
+    </section>
+
+    <!-- Sección: DAQ -->
+    <section class="mb-8">
+      <h2 class="text-xl font-semibold mb-2">Lectura de Temperatura (DAQ)</h2>
+      <label for="daq-channel">Canal:</label>
+      <select id="daq-channel" class="border rounded p-2" onchange="readDAQ()">
+        <option value="0">Canal 0</option>
+        <option value="1">Canal 1</option>
+        <option value="2">Canal 2</option>
+        <option value="3">Canal 3</option>
+      </select>
+      <p class="mt-2">Temperatura: <span id="temperature-value">--</span> °C</p>
+    </section>
+
+    <!-- Sección: Fuente de voltaje -->
+    <section>
+      <h2 class="text-xl font-semibold mb-2">Fuente de voltaje BK Precision</h2>
+      <a
+        href="http://IP_DE_TU_FUENTE"
+        target="_blank"
+        class="text-blue-600 hover:underline"
+      >
+        Abrir panel de la fuente
+      </a>
+    </section>
+  </div>
+
+  <script>
+    function toggleRelay(relayNumber) {
+      fetch(`/api/toggle_relay/${relayNumber}`, { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+          alert(`Relé ${relayNumber} cambiado a: ${data.state ? 'Encendido' : 'Apagado'}`);
+        });
+    }
+
+    function readDAQ() {
+      const channel = document.getElementById('daq-channel').value;
+      fetch(`/api/read_daq/${channel}`)
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById('temperature-value').textContent = data.temperature;
+        });
+    }
+  </script>
+</body>
+</html>
