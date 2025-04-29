@@ -1,0 +1,16 @@
+[Unit]
+Description=LabPiPanel - Control y monitoreo de laboratorio
+After=network.target
+
+[Service]
+User=raspy
+Group=raspy
+WorkingDirectory=/home/raspy/labpipanel
+ExecStart=/usr/bin/python3 /home/raspy/LabPiPanel/app.py
+Restart=always
+Environment=PATH=/usr/bin:/usr/local/bin
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

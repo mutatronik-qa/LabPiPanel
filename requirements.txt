@@ -1,9 +1,9 @@
 RPi.GPIO
-telnetlib
+telnetlib3
 flask
-usb.core
-usb.util
+usb
 mcculw
 flask-socketio 
 eventlet
 pyusb
+pexpect

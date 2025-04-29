@@ -1,73 +1,175 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LabPiPanel</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body, div {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f9;
+      color: #333;
+    }
+    h1, h2, h3 {
+      text-align: center;
+      margin-top: 10px;
+    }
+    #content {
+      text-align: center;
+      margin: 10px;
+    }
+    button {
+      display: block;
+      margin: 5px auto;
+      width: 120px;
+      height: 30px;
+      font-size: 14pt;
+      font-weight: bold;
+      color: black;
+    }
+    .LOW {
+      background-color: red;
+    }
+    .HIGH {
+      background-color: white;
+    }
+    .form-group {
+      text-align: center;
+      margin: 10px;
+    }
+    input[type="number"], select {
+      padding: 5px;
+      font-size: 14px;
+    }
+    #chart-container {
+      width: 100%;
+      max-width: 600px;
+      height: 300px;
+      margin: 0 auto;
+    }
+    #tempChart {
+      width: 100% !important;
+      height: 300px !important;
+    }
+  </style>
 </head>
-<body class="bg-gray-100 text-gray-800 font-sans">
-  <div class="max-w-5xl mx-auto p-6">
-    <h1 class="text-3xl font-bold mb-6">LabPiPanel: Panel de Control</h1>
+<body>
+  <h1>Panel de Control: LabPiPanel</h1>
 
-    <!-- Sección: Relés -->
-    <section class="mb-8">
-      <h2 class="text-xl font-semibold mb-2">Control de Relés</h2>
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {% for relay in range(1, 5) %}
-        <button
-          class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
-          onclick="toggleRelay({{ relay }})"
-        >
-          Relé {{ relay }}
-        </button>
-        {% endfor %}
-      </div>
-    </section>
+  <h2 style="background-color: blue; color: white;">Control de Relay</h2>
+  <div id="content">
+    <button type="button" class="HIGH" id="Relay1" onclick="Button_Click('Relay1')">Relay1</button>
+    <button type="button" class="HIGH" id="Relay2" onclick="Button_Click('Relay2')">Relay2</button>
+    <button type="button" class="HIGH" id="Relay3" onclick="Button_Click('Relay3')">Relay3</button>
+    <button type="button" class="HIGH" id="Relay4" onclick="Button_Click('Relay4')">Relay4</button>
+  </div>
 
-    <!-- Sección: DAQ -->
-    <section class="mb-8">
-      <h2 class="text-xl font-semibold mb-2">Lectura de Temperatura (DAQ)</h2>
-      <label for="daq-channel">Canal:</label>
-      <select id="daq-channel" class="border rounded p-2" onchange="readDAQ()">
-        <option value="0">Canal 0</option>
-        <option value="1">Canal 1</option>
-        <option value="2">Canal 2</option>
-        <option value="3">Canal 3</option>
-      </select>
-      <p class="mt-2">Temperatura: <span id="temperature-value">--</span> °C</p>
-    </section>
+  <h2 style="background-color: blue; color: white;">Control de Fuente XLN30052</h2>
+  <div class="form-group">
+    <label>Set Voltage (V): </label>
+    <input type="number" id="voltage" step="0.1">
+    <button onclick="setVoltage()">Enviar</button>
+  </div>
+  <div class="form-group">
+    <label>Set Corriente (A): </label>
+    <input type="number" id="current" step="0.1">
+    <button onclick="setCurrent()">Enviar</button>
+  </div>
+  <h3 id="current_voltage">Voltaje Actual: -- V</h3>
+  <h3 id="current_current">Corriente Actual: -- A</h3>
+  <button onclick="getVoltageCurrent()">Refrescar</button>
 
-    <!-- Sección: Fuente de voltaje -->
-    <section>
-      <h2 class="text-xl font-semibold mb-2">Fuente de voltaje BK Precision</h2>
-      <a
-        href="http://IP_DE_TU_FUENTE"
-        target="_blank"
-        class="text-blue-600 hover:underline"
-      >
-        Abrir panel de la fuente
-      </a>
-    </section>
+  <h2 style="background-color: blue; color: white;">Lectura de DAQ USB-5203</h2>
+  <div class="form-group">
+    <label for="channel_select">Selecciona canal:</label>
+    <select id="channel_select">
+      <option value="0">Canal 0</option>
+      <option value="1">Canal 1</option>
+      <option value="2">Canal 2</option>
+      <option value="3">Canal 3</option>
+      <option value="4">Canal 4</option>
+      <option value="5">Canal 5</option>
+      <option value="6">Canal 6</option>
+      <option value="7">Canal 7</option>
+    </select>
+    <button onclick="getTemperature()">Leer</button>
+  </div>
+  <h3 id="temperature">Temperatura: -- °C</h3>
+  <div id="chart-container">
+    <canvas id="tempChart"></canvas>
   </div>
 
   <script>
-    function toggleRelay(relayNumber) {
-      fetch(`/api/toggle_relay/${relayNumber}`, { method: 'POST' })
-        .then(response => response.json())
-        .then(data => {
-          alert(`Relé ${relayNumber} cambiado a: ${data.state ? 'Encendido' : 'Apagado'}`);
-        });
+    const Relay_Status = {
+      Relay1: 1,
+      Relay2: 1,
+      Relay3: 1,
+      Relay4: 1
+    };
+
+    function Button_Click(button_num) {
+      const button_id = `#${button_num}`;
+      Relay_Status[button_num] = Relay_Status[button_num] === 1 ? 0 : 1;
+      $(button_id).toggleClass("HIGH LOW");
+
+      $.post('/Relay', Relay_Status);
     }
 
-    function readDAQ() {
-      const channel = document.getElementById('daq-channel').value;
-      fetch(`/api/read_daq/${channel}`)
-        .then(response => response.json())
-        .then(data => {
-          document.getElementById('temperature-value').textContent = data.temperature;
-        });
+    function setVoltage() {
+      const voltage = document.getElementById("voltage").value;
+      // Realizar petición POST a backend Flask
     }
+
+    function setCurrent() {
+      const current = document.getElementById("current").value;
+      // Realizar petición POST a backend Flask
+    }
+
+    function getVoltageCurrent() {
+      // Realizar petición a backend para actualizar voltaje y corriente actual
+    }
+
+    function getTemperature() {
+      const channel = document.getElementById("channel_select").value;
+      const temp = (Math.random() * 20 + 20).toFixed(2);
+      document.getElementById("temperature").innerText = `Temperatura: ${temp} °C`;
+      const time = new Date().toLocaleTimeString();
+
+      tempChart.data.labels.push(time);
+      tempChart.data.datasets[0].data.push(temp);
+      if (tempChart.data.labels.length > 20) {
+        tempChart.data.labels.shift();
+        tempChart.data.datasets[0].data.shift();
+      }
+      tempChart.update();
+    }
+
+    const ctx = document.getElementById('tempChart').getContext('2d');
+    const tempChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Temperatura (°C)',
+          data: [],
+          borderColor: 'blue',
+          fill: false
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        }
+      }
+    });
   </script>
 </body>
 </html>
