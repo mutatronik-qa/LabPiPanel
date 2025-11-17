@@ -3,113 +3,589 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Control</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
-    <script src="jquery-3.3.1.js"></script>
-  
-    
-    <style type="text/css">
-    body,div{border:0; margin:0; padding:0;}
-      button {
-        display: block;
-        margin: 5px 5px 5px 5px;
-        width: 140px;
-        height: 30px;
-        font-size: 14pt;
-        font-weight: bold;
-        color: black;
-      }
-  
-      .LOW {
-        background-color: Red;
-      }
-          
-      .HIGH {
-        background-color: White;
-      }
-    </style>
+    <title>LabPiPanel - Sistema de Control de Laboratorio | ITM</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/itm_logo.png') }}">
 </head>
-
 <body>
-    <h1>Panel de Control</h1>
+    <header class="header">
+        <div class="header-content">
+            <div class="header-logo">
+                <img src="{{ url_for('static', filename='img/itm_logo.png') }}" alt="Logo ITM" class="logo-img">
+                <div class="header-text">
+                    <h1>LabPiPanel</h1>
+                    <p class="subtitle">Sistema de Control de Laboratorio Térmico</p>
+                    <p class="institution">Instituto Tecnológico Metropolitano - Medellín, Colombia</p>
+                </div>
+            </div>
+            <div class="system-status" id="systemStatus">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Conectando...</span>
+            </div>
+        </div>
+    </header>
 
-    <h2>Control de Fuente XLN30052</h2>
-    <section>
-        <a
-          href="192.168.1.150"
-          target="_blank"
-          class="text-blue-600 hover:underline"
-        >
-          Abrir panel de la fuente
-        </a>
-    </section>
-    <label>Set Voltage (V): </label>
-    <input type="number" id="voltage" step="0.1">
-    <button onclick="setVoltage()">Enviar</button>
-    <h3 id="current_voltage">Voltaje Actual: -- V</h3>
-    <button onclick="getVoltage()">Refrescar</button>
+    <main class="main-container">
+        <div class="dashboard">
+            <!-- Panel de Control de Fuente -->
+            <section class="panel" id="fuentePanel">
+                <h2 class="panel-title">
+                    <span class="icon">⚡</span>
+                    Fuente de Alimentación XLN30052
+                </h2>
+                
+                <div class="control-group">
+                    <div class="input-group">
+                        <label for="voltageInput">Voltaje (V)</label>
+                        <input type="number" id="voltageInput" min="0" max="300" step="0.1" value="0">
+                        <button class="btn btn-action" onclick="setVoltage()">Configurar</button>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="currentInput">Corriente Límite (A)</label>
+                        <input type="number" id="currentInput" min="0" max="5.2" step="0.01" value="0">
+                        <button class="btn btn-action" onclick="setCurrent()">Configurar</button>
+                    </div>
+                </div>
+                
+                <div class="control-buttons">
+                    <button class="btn btn-success" onclick="outputControl('on')">Activar Salida</button>
+                    <button class="btn btn-alert" onclick="outputControl('off')">Desactivar Salida</button>
+                    <button class="btn btn-secondary" onclick="measurePower()">Medir</button>
+                </div>
+                
+                <div class="status-box">
+                    <h3>Mediciones Actuales</h3>
+                    <div class="measurements">
+                        <div class="measurement-item">
+                            <span class="label">Voltaje:</span>
+                            <span class="value" id="voltageDisplay">-- V</span>
+                        </div>
+                        <div class="measurement-item">
+                            <span class="label">Corriente:</span>
+                            <span class="value" id="currentDisplay">-- A</span>
+                        </div>
+                        <div class="measurement-item">
+                            <span class="label">Potencia:</span>
+                            <span class="value" id="powerDisplay">-- W</span>
+                        </div>
+                        <div class="measurement-item">
+                            <span class="label">Estado Salida:</span>
+                            <span class="value" id="outputStateDisplay">--</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="status-box" id="protectionsBox">
+                    <h3>Protecciones</h3>
+                    <div id="protectionsStatus">
+                        <span class="label">Estado:</span>
+                        <span class="value" id="protectionsDisplay">OK</span>
+                    </div>
+                </div>
+            </section>
 
+            <!-- Panel de Adquisición de Datos (DAQ) -->
+            <section class="panel" id="daqPanel">
+                <h2 class="panel-title">
+                    <span class="icon">🌡️</span>
+                    Sistema de Adquisición de Datos (DAQ USB-5203)
+                </h2>
+                
+                <div class="control-buttons">
+                    <button class="btn btn-action" onclick="readTemperatures()">Leer Temperaturas</button>
+                </div>
+                
+                <div class="status-box">
+                    <h3>Evaporador (Canales 0-3)</h3>
+                    <div class="temperature-grid">
+                        <div class="temp-item">
+                            <span class="label">CH0:</span>
+                            <span class="temp-value" id="temp_ch0">-- °C</span>
+                        </div>
+                        <div class="temp-item">
+                            <span class="label">CH1:</span>
+                            <span class="temp-value" id="temp_ch1">-- °C</span>
+                        </div>
+                        <div class="temp-item">
+                            <span class="label">CH2:</span>
+                            <span class="temp-value" id="temp_ch2">-- °C</span>
+                        </div>
+                        <div class="temp-item">
+                            <span class="label">CH3:</span>
+                            <span class="temp-value" id="temp_ch3">-- °C</span>
+                        </div>
+                    </div>
+                    <div class="avg-temp">
+                        <span class="label">Promedio Evaporador:</span>
+                        <span class="temp-value-large" id="temp_evap_avg">-- °C</span>
+                    </div>
+                </div>
+                
+                <div class="status-box">
+                    <h3>Condensador (Canales 4-7)</h3>
+                    <div class="temperature-grid">
+                        <div class="temp-item">
+                            <span class="label">CH4:</span>
+                            <span class="temp-value" id="temp_ch4">-- °C</span>
+                        </div>
+                        <div class="temp-item">
+                            <span class="label">CH5:</span>
+                            <span class="temp-value" id="temp_ch5">-- °C</span>
+                        </div>
+                        <div class="temp-item">
+                            <span class="label">CH6:</span>
+                            <span class="temp-value" id="temp_ch6">-- °C</span>
+                        </div>
+                        <div class="temp-item">
+                            <span class="label">CH7:</span>
+                            <span class="temp-value" id="temp_ch7">-- °C</span>
+                        </div>
+                    </div>
+                    <div class="avg-temp">
+                        <span class="label">Promedio Condensador:</span>
+                        <span class="temp-value-large" id="temp_cond_avg">-- °C</span>
+                    </div>
+                </div>
+            </section>
 
-    
-    <h2>Lectura de DAQ USB-5203</h2>
-    <button onclick="getTemperature()">Leer </button>
-    <h3 id="temperature">Temperatura: -- °C</h3>
+            <!-- Panel de Control de Relés -->
+            <section class="panel" id="relayPanel">
+                <h2 class="panel-title">
+                    <span class="icon">🔌</span>
+                    Control de Relés
+                </h2>
+                
+                <div class="relay-grid">
+                    <div class="relay-card">
+                        <h3>Relé 1 - Bomba</h3>
+                        <div class="relay-status" id="relay1Status">
+                            <span class="relay-indicator relay-inactive">●</span>
+                            <span>Inactivo</span>
+                        </div>
+                        <div class="relay-controls">
+                            <button class="btn btn-success btn-sm" onclick="relayControl('RELAY_1', 'on')">Activar</button>
+                            <button class="btn btn-alert btn-sm" onclick="relayControl('RELAY_1', 'off')">Desactivar</button>
+                        </div>
+                    </div>
+                    
+                    <div class="relay-card">
+                        <h3>Relé 2 - Respaldo 1</h3>
+                        <div class="relay-status" id="relay2Status">
+                            <span class="relay-indicator relay-inactive">●</span>
+                            <span>Inactivo</span>
+                        </div>
+                        <div class="relay-controls">
+                            <button class="btn btn-success btn-sm" onclick="relayControl('RELAY_2', 'on')">Activar</button>
+                            <button class="btn btn-alert btn-sm" onclick="relayControl('RELAY_2', 'off')">Desactivar</button>
+                        </div>
+                    </div>
+                    
+                    <div class="relay-card">
+                        <h3>Relé 3 - Respaldo 2</h3>
+                        <div class="relay-status" id="relay3Status">
+                            <span class="relay-indicator relay-inactive">●</span>
+                            <span>Inactivo</span>
+                        </div>
+                        <div class="relay-controls">
+                            <button class="btn btn-success btn-sm" onclick="relayControl('RELAY_3', 'on')">Activar</button>
+                            <button class="btn btn-alert btn-sm" onclick="relayControl('RELAY_3', 'off')">Desactivar</button>
+                        </div>
+                    </div>
+                    
+                    <div class="relay-card">
+                        <h3>Relé 4 - Respaldo 3</h3>
+                        <div class="relay-status" id="relay4Status">
+                            <span class="relay-indicator relay-inactive">●</span>
+                            <span>Inactivo</span>
+                        </div>
+                        <div class="relay-controls">
+                            <button class="btn btn-success btn-sm" onclick="relayControl('RELAY_4', 'on')">Activar</button>
+                            <button class="btn btn-alert btn-sm" onclick="relayControl('RELAY_4', 'off')">Desactivar</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-    <h2>Control de Relés</h2>
-    <label>Selecciona Relé:</label>
+            <!-- Panel de Experimentos -->
+            <section class="panel" id="experimentPanel">
+                <h2 class="panel-title">
+                    <span class="icon">🔬</span>
+                    Experimento Térmico Automatizado
+                </h2>
+                
+                <div class="experiment-config">
+                    <div class="input-group">
+                        <label for="powerLevels">Niveles de Potencia (W)</label>
+                        <input type="text" id="powerLevels" value="1.0, 2.0, 3.0" placeholder="1.0, 2.0, 3.0">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="durationInput">Duración por Nivel (segundos)</label>
+                        <input type="number" id="durationInput" min="60" max="3600" value="600">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="sampleRateInput">Frecuencia de Muestreo (segundos)</label>
+                        <input type="number" id="sampleRateInput" min="10" max="300" value="60">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="resistanceInput">Resistencia de Carga (Ω)</label>
+                        <input type="number" id="resistanceInput" min="1" max="1000" step="0.1" value="10">
+                    </div>
+                    
+                    <div class="checkbox-group">
+                        <label>
+                            <input type="checkbox" id="enablePumpCheck" checked>
+                            Activar bomba de fluido
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="control-buttons">
+                    <button class="btn btn-action btn-large" onclick="runExperiment()">Iniciar Experimento</button>
+                    <button class="btn btn-secondary" onclick="checkExperimentStatus()">Verificar Estado</button>
+                </div>
+                
+                <div class="status-box" id="experimentStatusBox">
+                    <h3>Estado del Experimento</h3>
+                    <div id="experimentStatus">
+                        <p>No hay experimento en ejecución</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
 
-    <div id="content" align="left">
-        <button type = "button" class = "HIGH" id = "Relay1" onclick = Button_Click("Relay1")>Relay1</button>
-        <button type = "button" class = "HIGH" id = "Relay2" onclick = Button_Click("Relay2")>Relay2</button>
-        <button type = "button" class = "HIGH" id = "Relay3" onclick = Button_Click("Relay3")>Relay3</button>
-        <button type = "button" class = "HIGH" id = "Relay4" onclick = Button_Click("Relay4")>Relay4</button>
-        <!-- <button type = "button" class = "HIGH" id = "Relay5" onclick = Button_Click("Relay5")>Relay5</button> -->
-        <!-- <button type = "button" class = "HIGH" id = "Relay6" onclick = Button_Click("Relay6")>Relay6</button> -->
-        <!-- <button type = "button" class = "HIGH" id = "Relay7" onclick = Button_Click("Relay7")>Relay7</button> -->
-        <!-- <button type = "button" class = "HIGH" id = "Relay8" onclick = Button_Click("Relay8")>Relay8</button> -->
-    </div>
-    <h3>Estado de Relés</h3>
-    <pre id="relay_status">---</pre>
+    <footer class="footer">
+        <p>&copy; 2025 Instituto Tecnológico Metropolitano (ITM) - Medellín, Colombia</p>
+        <p>Sistema de Control de Laboratorio para Investigación en Propiedades Térmicas</p>
+    </footer>
+
+    <div class="notification" id="notification"></div>
 
     <script>
-  
-  var Relay_Status = {
-  Relay1: 1,
-  Relay2: 1,
-  Relay3: 1,
-  Relay4: 1,
-  Relay5: 1,
-  Relay6: 1,
-  Relay7: 1,
-  Relay8: 1
-};
+        // Sistema de notificaciones
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification notification-${type} show`;
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 5000);
+        }
 
-function Button_Click(button_num) {
-      
-  var button_id = "#" + button_num;
-      
-  if(Relay_Status[button_num] == 1) {
-    $(button_id).removeClass("HIGH");
-    $(button_id).addClass("LOW");
-    Relay_Status[button_num] = 0;
-  }
-  else if(Relay_Status[button_num] == 0) {
-    $(button_id).removeClass("LOW");
-    $(button_id).addClass("HIGH");
-    Relay_Status[button_num] = 1;
-  }
-  
-  $.post('Relay', {Relay1: Relay_Status.Relay1, 
-                  Relay2: Relay_Status.Relay2, 
-                  Relay3: Relay_Status.Relay3, 
-                  Relay4: Relay_Status.Relay4, 
-                  Relay5: Relay_Status.Relay5, 
-                  Relay6: Relay_Status.Relay6, 
-                  Relay7: Relay_Status.Relay7, 
-                  Relay8: Relay_Status.Relay8})
-}
+        // Verificar estado del sistema
+        async function checkSystemStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                
+                const statusDot = document.getElementById('statusDot');
+                const statusText = document.getElementById('statusText');
+                
+                if (data.status === 'ok') {
+                    statusDot.className = 'status-dot status-ok';
+                    statusText.textContent = 'Sistema Conectado';
+                } else {
+                    statusDot.className = 'status-dot status-error';
+                    statusText.textContent = 'Error de Conexión';
+                }
+            } catch (error) {
+                const statusDot = document.getElementById('statusDot');
+                const statusText = document.getElementById('statusText');
+                statusDot.className = 'status-dot status-error';
+                statusText.textContent = 'Sin Conexión';
+            }
+        }
 
+        // Control de fuente
+        async function setVoltage() {
+            const voltage = parseFloat(document.getElementById('voltageInput').value);
+            
+            if (isNaN(voltage) || voltage < 0 || voltage > 300) {
+                showNotification('Voltaje inválido (0-300V)', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/fuente/voltage', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({voltage: voltage, confirm: voltage > 50})
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'ok') {
+                    showNotification(`Voltaje configurado: ${voltage}V`, 'success');
+                } else if (data.require_confirm) {
+                    if (confirm(data.message)) {
+                        await setVoltage();
+                    }
+                } else {
+                    showNotification(data.message, 'error');
+                }
+            } catch (error) {
+                showNotification('Error al configurar voltaje', 'error');
+            }
+        }
+
+        async function setCurrent() {
+            const current = parseFloat(document.getElementById('currentInput').value);
+            
+            if (isNaN(current) || current < 0 || current > 5.2) {
+                showNotification('Corriente inválida (0-5.2A)', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/fuente/current', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({current: current})
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'ok') {
+                    showNotification(`Corriente configurada: ${current}A`, 'success');
+                } else {
+                    showNotification(data.message, 'error');
+                }
+            } catch (error) {
+                showNotification('Error al configurar corriente', 'error');
+            }
+        }
+
+        async function outputControl(state) {
+            try {
+                const response = await fetch('/api/fuente/output', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({state: state})
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'ok') {
+                    showNotification(`Salida ${state === 'on' ? 'activada' : 'desactivada'}`, 'success');
+                    await measurePower();
+                } else {
+                    showNotification(data.message, 'error');
+                }
+            } catch (error) {
+                showNotification('Error al controlar salida', 'error');
+            }
+        }
+
+        async function measurePower() {
+            try {
+                const response = await fetch('/api/fuente/measure');
+                const data = await response.json();
+                
+                if (data.status === 'ok') {
+                    document.getElementById('voltageDisplay').textContent = `${data.voltage} V`;
+                    document.getElementById('currentDisplay').textContent = `${data.current} A`;
+                    document.getElementById('powerDisplay').textContent = `${data.power} W`;
+                }
+                
+                const outputResponse = await fetch('/api/fuente/output');
+                const outputData = await outputResponse.json();
+                
+                if (outputData.status === 'ok') {
+                    const stateText = outputData.output_state === 'on' ? 'ACTIVA' : 'INACTIVA';
+                    const stateClass = outputData.output_state === 'on' ? 'status-active' : 'status-inactive';
+                    document.getElementById('outputStateDisplay').innerHTML = `<span class="${stateClass}">${stateText}</span>`;
+                }
+                
+                const protResponse = await fetch('/api/fuente/protections');
+                const protData = await protResponse.json();
+                
+                if (protData.status === 'ok') {
+                    const protStatus = protData.protections.status;
+                    const protClass = protStatus === 'ok' ? 'status-ok' : 'status-error';
+                    document.getElementById('protectionsDisplay').innerHTML = `<span class="${protClass}">${protStatus.toUpperCase()}</span>`;
+                }
+            } catch (error) {
+                showNotification('Error al medir potencia', 'error');
+            }
+        }
+
+        // Lectura de temperaturas
+        async function readTemperatures() {
+            try {
+                const response = await fetch('/api/daq/read');
+                const data = await response.json();
+                
+                if (data.status === 'ok') {
+                    for (let i = 0; i < 8; i++) {
+                        const temp = data.temperatures[`ch${i}`];
+                        const display = temp !== null ? `${temp} °C` : 'N/A';
+                        document.getElementById(`temp_ch${i}`).textContent = display;
+                    }
+                    
+                    const evapAvg = data.averages.evaporator;
+                    const condAvg = data.averages.condenser;
+                    
+                    document.getElementById('temp_evap_avg').textContent = evapAvg !== null ? `${evapAvg} °C` : 'N/A';
+                    document.getElementById('temp_cond_avg').textContent = condAvg !== null ? `${condAvg} °C` : 'N/A';
+                    
+                    showNotification('Temperaturas actualizadas', 'success');
+                } else {
+                    showNotification(data.message, 'error');
+                }
+            } catch (error) {
+                showNotification('Error al leer temperaturas', 'error');
+            }
+        }
+
+        // Control de relés
+        async function relayControl(relayName, action) {
+            try {
+                const response = await fetch(`/api/relay/${relayName}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({action: action})
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'ok') {
+                    updateRelayStatus(relayName, data.state);
+                    showNotification(`${relayName} ${data.state === 'active' ? 'activado' : 'desactivado'}`, 'success');
+                } else {
+                    showNotification(data.message, 'error');
+                }
+            } catch (error) {
+                showNotification('Error al controlar relé', 'error');
+            }
+        }
+
+        function updateRelayStatus(relayName, state) {
+            const relayNumber = relayName.split('_')[1];
+            const statusElement = document.getElementById(`relay${relayNumber}Status`);
+            
+            const indicator = statusElement.querySelector('.relay-indicator');
+            const text = statusElement.querySelector('span:last-child');
+            
+            if (state === 'active') {
+                indicator.className = 'relay-indicator relay-active';
+                text.textContent = 'Activo';
+            } else {
+                indicator.className = 'relay-indicator relay-inactive';
+                text.textContent = 'Inactivo';
+            }
+        }
+
+        // Control de experimentos
+        async function runExperiment() {
+            const powerLevelsStr = document.getElementById('powerLevels').value;
+            const duration = parseInt(document.getElementById('durationInput').value);
+            const sampleRate = parseInt(document.getElementById('sampleRateInput').value);
+            const resistance = parseFloat(document.getElementById('resistanceInput').value);
+            const enablePump = document.getElementById('enablePumpCheck').checked;
+            
+            const powerLevels = powerLevelsStr.split(',').map(p => parseFloat(p.trim()));
+            
+            if (powerLevels.some(isNaN) || powerLevels.length === 0) {
+                showNotification('Niveles de potencia inválidos', 'error');
+                return;
+            }
+            
+            if (isNaN(duration) || duration < 60) {
+                showNotification('Duración debe ser al menos 60 segundos', 'error');
+                return;
+            }
+            
+            if (isNaN(sampleRate) || sampleRate < 10) {
+                showNotification('Frecuencia de muestreo debe ser al menos 10 segundos', 'error');
+                return;
+            }
+            
+            if (isNaN(resistance) || resistance <= 0) {
+                showNotification('Resistencia inválida', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/experiment/run', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        power_levels: powerLevels,
+                        duration: duration,
+                        sample_rate: sampleRate,
+                        resistance: resistance,
+                        enable_pump: enablePump
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'ok') {
+                    showNotification('Experimento iniciado correctamente', 'success');
+                    setTimeout(checkExperimentStatus, 2000);
+                } else {
+                    showNotification(data.message, 'error');
+                }
+            } catch (error) {
+                showNotification('Error al iniciar experimento', 'error');
+            }
+        }
+
+        async function checkExperimentStatus() {
+            try {
+                const response = await fetch('/api/experiment/status');
+                const data = await response.json();
+                
+                if (data.status === 'ok') {
+                    const expStatus = data.experiment;
+                    const statusBox = document.getElementById('experimentStatus');
+                    
+                    if (expStatus.running) {
+                        const exp = expStatus.experiment;
+                        statusBox.innerHTML = `
+                            <p><strong>Estado:</strong> <span class="status-active">EN EJECUCIÓN</span></p>
+                            <p><strong>Experimento:</strong> ${exp.name || 'N/A'}</p>
+                            <p><strong>Niveles de potencia:</strong> ${exp.power_levels ? exp.power_levels.join(', ') + 'W' : 'N/A'}</p>
+                            <p><strong>Muestras recolectadas:</strong> ${exp.samples_collected || 0}</p>
+                        `;
+                    } else if (expStatus.last_experiment) {
+                        const exp = expStatus.last_experiment;
+                        const statusClass = exp.status === 'completed' ? 'status-ok' : 'status-error';
+                        statusBox.innerHTML = `
+                            <p><strong>Último experimento:</strong> ${exp.name || 'N/A'}</p>
+                            <p><strong>Estado:</strong> <span class="${statusClass}">${exp.status ? exp.status.toUpperCase() : 'N/A'}</span></p>
+                            <p><strong>Muestras recolectadas:</strong> ${exp.samples_collected || 0}</p>
+                            <p><strong>Archivo CSV:</strong> ${exp.csv_file || 'N/A'}</p>
+                            ${exp.errors && exp.errors.length > 0 ? `<p><strong>Errores:</strong> ${exp.errors.join(', ')}</p>` : ''}
+                        `;
+                    } else {
+                        statusBox.innerHTML = '<p>No hay experimento en ejecución</p>';
+                    }
+                }
+            } catch (error) {
+                showNotification('Error al verificar estado del experimento', 'error');
+            }
+        }
+
+        // Actualización automática
+        setInterval(checkSystemStatus, 10000);
+        setInterval(() => {
+            if (document.getElementById('outputStateDisplay').textContent.includes('ACTIVA')) {
+                measurePower();
+            }
+        }, 5000);
+
+        // Inicialización
+        window.onload = () => {
+            checkSystemStatus();
+            measurePower();
+            checkExperimentStatus();
+        };
     </script>
 </body>
 </html>
-
