@@ -24,7 +24,7 @@ FLASK_PORT = int(os.getenv("FLASK_PORT", 5000))
 FLASK_DEBUG = os.getenv("FLASK_DEBUG", "False").lower() == "true"
 
 # Configuración de fuente XLN30052
-XLN_HOST = os.getenv("XLN_HOST", "192.168.1.100")
+XLN_HOST = os.getenv("XLN_HOST", "192.168.1.150")
 XLN_PORT = int(os.getenv("XLN_PORT", 5024))
 XLN_TIMEOUT = 10
 XLN_VOLTAGE_MAX = 300.0
